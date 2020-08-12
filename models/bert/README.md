@@ -4,7 +4,7 @@ Finetuning the pre-trained [BERT](https://arxiv.org/abs/1810.04805) models for D
 
 ## Quick start
 
-For fine-tuning the pre-trained BERT-base model on Reuters dataset, just run the following from the project working directory.
+要在Reuters数据集上微调预训练的基于BERT的模型，只需在项目工作目录中运行以下命令即可。
 
 ```
 python -m models.bert --dataset Reuters --model bert-base-uncased --max-seq-length 256 --batch-size 16 --lr 2e-5 --epochs 30
@@ -16,7 +16,7 @@ The best model weights will be saved in
 models/bert/saves/Reuters/best_model.pt
 ```
 
-To test the model, you can use the following command.
+要测试模型，可以使用以下命令。
 
 ```
 python -m models.bert --dataset Reuters --model bert-base-uncased --max-seq-length 256 --batch-size 16 --lr 2e-5 --epochs 30 --trained-model models/bert/saves/Reuters/best_model.pt
@@ -32,7 +32,7 @@ We follow the same types of models as in [huggingface's implementation](https://
 
 ## Dataset
 
-We experiment the model on the following datasets:
+我们在以下数据集上对该模型进行实验：
 
 - Reuters (ModApte)
 - AAPD
