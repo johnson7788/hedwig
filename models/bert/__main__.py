@@ -1,11 +1,11 @@
 import random
-import time
+import time,os
 
 import numpy as np
 import torch
 from transformers import AdamW, BertForSequenceClassification, BertTokenizer, get_linear_schedule_with_warmup
 
-from common.constants import *
+from common.constants import BERT_MODELS, LOG_HEADER, LOG_TEMPLATE,MODEL_DATA_DIR,PRETRAINED_MODEL_ARCHIVE_MAP,PRETRAINED_VOCAB_ARCHIVE_MAP
 from common.evaluators.bert_evaluator import BertEvaluator
 from common.trainers.bert_trainer import BertTrainer
 from datasets.bert_processors.aapd_processor import AAPDProcessor
@@ -26,22 +26,25 @@ def evaluate_split(model, processor, tokenizer, args, split='dev'):
 
 
 if __name__ == '__main__':
-    # Set default configuration in args.py
+    #设置默认args
     args = get_args()
+    #判断device是gpu还是cpu
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    #gpu数量
     n_gpu = torch.cuda.device_count()
 
-    print('Device:', str(device).upper())
-    print('Number of GPUs:', n_gpu)
-    print('FP16:', args.fp16)
+    print('使用Device:', str(device).upper())
+    print('GPUs数量:', n_gpu)
+    print('是否开启FP16:', args.fp16)
 
-    # Set random seed for reproducibility
+    #设置随机数种子
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     if n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
+    #不同数据集的的加载
     dataset_map = {
         'SST-2': SST2Processor,
         'Reuters': ReutersProcessor,
@@ -57,22 +60,29 @@ if __name__ == '__main__':
                             args.gradient_accumulation_steps))
 
     if args.dataset not in dataset_map:
-        raise ValueError('Unrecognized dataset')
+        raise ValueError('不能识别dataset，无效设置')
 
     args.batch_size = args.batch_size // args.gradient_accumulation_steps
     args.device = device
     args.n_gpu = n_gpu
+    # 数据处理的data Processer里面已经定义好类别数量和是否是多标签
     args.num_labels = dataset_map[args.dataset].NUM_CLASSES
     args.is_multilabel = dataset_map[args.dataset].IS_MULTILABEL
 
+    #保存的模型路径
     if not args.trained_model:
         save_path = os.path.join(args.save_path, dataset_map[args.dataset].NAME)
         os.makedirs(save_path, exist_ok=True)
 
+    #是否是级联的
     args.is_hierarchical = False
+    #初始化data processor
     processor = dataset_map[args.dataset]()
-    pretrained_vocab_path = PRETRAINED_VOCAB_ARCHIVE_MAP[args.model]
-    tokenizer = BertTokenizer.from_pretrained(pretrained_vocab_path)
+    # 已缓存的模型的路径
+    # pretrained_vocab_path = PRETRAINED_VOCAB_ARCHIVE_MAP[args.model]
+    #加载tokenizer
+    # tokenizer = BertTokenizer.from_pretrained(pretrained_vocab_path)
+    tokenizer = BertTokenizer.from_pretrained(args.model)
 
     train_examples = None
     num_train_optimization_steps = None
@@ -81,8 +91,9 @@ if __name__ == '__main__':
         num_train_optimization_steps = int(
             len(train_examples) / args.batch_size / args.gradient_accumulation_steps) * args.epochs
 
-    pretrained_model_path = args.model if os.path.isfile(args.model) else PRETRAINED_MODEL_ARCHIVE_MAP[args.model]
-    model = BertForSequenceClassification.from_pretrained(pretrained_model_path, num_labels=args.num_labels)
+    # pretrained_model_path = args.model if os.path.isfile(args.model) else PRETRAINED_MODEL_ARCHIVE_MAP[args.model]
+    # model = BertForSequenceClassification.from_pretrained(pretrained_model_path, num_labels=args.num_labels)
+    model = BertForSequenceClassification.from_pretrained(args.model, num_labels=args.num_labels)
 
     if args.fp16:
         model.half()
