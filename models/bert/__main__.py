@@ -102,13 +102,15 @@ if __name__ == '__main__':
     if n_gpu > 1:
         model = torch.nn.DataParallel(model)
 
-    # Prepare optimizer
+    #优化器
     param_optimizer = list(model.named_parameters())
+    #哪些参数不衰减
     no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
     optimizer_grouped_parameters = [
         {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
         {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}]
 
+    #如果不是继续训练，那么。。
     if not args.trained_model:
         if args.fp16:
             try:
@@ -133,9 +135,9 @@ if __name__ == '__main__':
         trainer = BertTrainer(model, optimizer, processor, scheduler, tokenizer, args)
         trainer.train()
         model = torch.load(trainer.snapshot_path)
-
+    #如果是继续训练，那么加载模型
     else:
-        model = BertForSequenceClassification.from_pretrained(pretrained_model_path, num_labels=args.num_labels)
+        model = BertForSequenceClassification.from_pretrained(args.model, num_labels=args.num_labels)
         model_ = torch.load(args.trained_model, map_location=lambda storage, loc: storage)
         state = {}
         for key in model_.state_dict().keys():
